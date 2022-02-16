@@ -54,3 +54,13 @@ func Error(msg string, params ...interface{}) {
 func Fatal(msg string, params ...interface{}) {
 	logger.Fatal(msg, params...)
 }
+
+// PushContext adds a new context prefix to the log message
+func PushContext(msg string) {
+	logger.PushContext(msg)
+}
+
+// PopContext removes the latest context prefix from the log message
+func PopContext() {
+	logger.PopContext()
+}
