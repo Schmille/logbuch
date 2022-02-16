@@ -1,6 +1,7 @@
 package logbuch
 
 import (
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -20,6 +21,35 @@ const (
 	LevelError
 )
 
+type Context struct {
+	list   []string
+	cached string
+}
+
+func (c *Context) Push(value string) {
+	c.list = append(c.list, value)
+	c.recompute()
+}
+
+func (c *Context) Pop() {
+	c.list = c.list[:len(c.list)-1]
+	c.recompute()
+}
+
+func (c *Context) recompute() {
+	c.cached = ""
+	for _, value := range c.list {
+		c.cached += fmt.Sprintf("[%s] ", value)
+	}
+}
+
+func NewContext() Context {
+	return Context{
+		list:   make([]string, 0),
+		cached: "",
+	}
+}
+
 // Logger writes messages to different io.Writers depending on the log level by using a Formatter.
 type Logger struct {
 	m          sync.Mutex
@@ -30,6 +60,7 @@ type Logger struct {
 	warningOut io.Writer
 	errorOut   io.Writer
 	buffer     []byte
+	context    Context
 
 	// PanicOnErr enables panics if the logger cannot write to log output.
 	PanicOnErr bool
@@ -41,7 +72,9 @@ func NewLogger(stdout, stderr io.Writer) *Logger {
 		debugOut:   stdout,
 		infoOut:    stdout,
 		warningOut: stdout,
-		errorOut:   stderr}
+		errorOut:   stderr,
+		context:    NewContext(),
+	}
 }
 
 // SetLevel sets the log level.
@@ -134,6 +167,7 @@ func (log *Logger) Fatal(msg string, params ...interface{}) {
 
 func (log *Logger) log(level int, msg string, params []interface{}) {
 	now := time.Now()
+	msg = log.context.cached + msg
 	log.m.Lock()
 	defer log.m.Unlock()
 	log.buffer = log.buffer[:0]
@@ -155,6 +189,14 @@ func (log *Logger) log(level int, msg string, params []interface{}) {
 	if err != nil && log.PanicOnErr {
 		panic(err)
 	}
+}
+
+func (log *Logger) PushContext(context string) {
+	log.context.Push(context)
+}
+
+func (log *Logger) PopContext() {
+	log.context.Pop()
 }
 
 func getValidLevel(level int) int {

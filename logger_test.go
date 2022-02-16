@@ -144,3 +144,22 @@ func TestNewLoggerRollingFileAppender(t *testing.T) {
 		t.Fatalf("Error log must contain log output, but was: %v", string(errFile))
 	}
 }
+
+func TestContext(t *testing.T) {
+	context := NewContext()
+	context.Push("TestContext")
+
+	if context.cached != "[TestContext] " {
+		t.Fail()
+		return
+	}
+
+	context.Push("Test2")
+	context.Push("Test3")
+	context.Pop()
+
+	if context.cached != "[TestContext] [Test2] " {
+		t.Fail()
+		return
+	}
+}
