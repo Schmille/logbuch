@@ -1,8 +1,8 @@
 package logbuch
 
 import (
-	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 )
@@ -21,30 +21,35 @@ const (
 	LevelError
 )
 
-type Context struct {
+// context stores a list of prefixes that can be applied ao every message send through logbuch's logger
+type context struct {
 	list   []string
 	cached string
 }
 
-func (c *Context) Push(value string) {
+func (c *context) push(value string) {
 	c.list = append(c.list, value)
 	c.recompute()
 }
 
-func (c *Context) Pop() {
+func (c *context) pop() {
 	c.list = c.list[:len(c.list)-1]
 	c.recompute()
 }
 
-func (c *Context) recompute() {
+func (c *context) recompute() {
 	c.cached = ""
+	var builder strings.Builder
 	for _, value := range c.list {
-		c.cached += fmt.Sprintf("[%s] ", value)
+		builder.WriteString("[")
+		builder.WriteString(value)
+		builder.WriteString("] ")
 	}
+	c.cached = builder.String()
 }
 
-func NewContext() Context {
-	return Context{
+func newContext() context {
+	return context{
 		list:   make([]string, 0),
 		cached: "",
 	}
@@ -60,7 +65,7 @@ type Logger struct {
 	warningOut io.Writer
 	errorOut   io.Writer
 	buffer     []byte
-	context    Context
+	context    context
 
 	// PanicOnErr enables panics if the logger cannot write to log output.
 	PanicOnErr bool
@@ -73,7 +78,7 @@ func NewLogger(stdout, stderr io.Writer) *Logger {
 		infoOut:    stdout,
 		warningOut: stdout,
 		errorOut:   stderr,
-		context:    NewContext(),
+		context:    newContext(),
 	}
 }
 
@@ -191,12 +196,14 @@ func (log *Logger) log(level int, msg string, params []interface{}) {
 	}
 }
 
+// PushContext adds a formatted prefix to every message
 func (log *Logger) PushContext(context string) {
-	log.context.Push(context)
+	log.context.push(context)
 }
 
+// PopContext removes the latest prefix
 func (log *Logger) PopContext() {
-	log.context.Pop()
+	log.context.pop()
 }
 
 func getValidLevel(level int) int {

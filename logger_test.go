@@ -146,19 +146,25 @@ func TestNewLoggerRollingFileAppender(t *testing.T) {
 }
 
 func TestContext(t *testing.T) {
-	context := NewContext()
-	context.Push("TestContext")
+	ctx := newContext()
+	ctx.push("TestContext")
 
-	if context.cached != "[TestContext] " {
+	if ctx.cached != "[TestContext] " {
 		t.Fail()
 		return
 	}
 
-	context.Push("Test2")
-	context.Push("Test3")
-	context.Pop()
+	ctx.push("Test2")
+	ctx.push("Test3")
 
-	if context.cached != "[TestContext] [Test2] " {
+	if ctx.cached != "[TestContext] [Test2] [Test3] " {
+		t.Fail()
+		return
+	}
+
+	ctx.pop()
+
+	if ctx.cached != "[TestContext] [Test2] " {
 		t.Fail()
 		return
 	}
